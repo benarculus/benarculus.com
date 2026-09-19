@@ -14,9 +14,6 @@ on:
           - preview
           - production
 
-env:
-  SITE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.site_mode || 'preview' }}
-
 permissions:
   contents: read
 
@@ -43,7 +40,8 @@ jobs:
       - run: npm run validate
       - name: Build selected Pages artifact
         run: |
-          if [ "$SITE_MODE" = "production" ]; then
+          site_mode="${{ github.event_name == 'workflow_dispatch' && inputs.site_mode || 'preview' }}"
+          if [ "$site_mode" = "production" ]; then
             npm run build
             npm run test:generated
           else
