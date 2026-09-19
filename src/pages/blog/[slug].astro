@@ -1,0 +1,73 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  articleJsonLd,
+  getPublishedPosts,
+  getPostSlug,
+  postPath,
+  withBase,
+} from "../../lib/site";
+
+export async function getStaticPaths() {
+  const posts = getPublishedPosts(await getCollection("posts"));
+  return posts.map((post) => ({
+    params: { slug: getPostSlug(post) },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<"posts">;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const jsonLd = articleJsonLd(post);
+---
+
+<BaseLayout
+  title={`${post.data.title} — Ben Arculus`}
+  description={post.data.description}
+  pathname={postPath(post)}
+  socialImage="/images/writing-practice-social.png"
+  type="article"
+>
+  <script
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(jsonLd)}
+  />
+  <article>
+    <header class="article-header">
+      <p class="eyebrow">{post.data.tags[0] ?? "Personal note"}</p>
+      <h1>{post.data.title}</h1>
+      <p class="lede">{post.data.description}</p>
+      <p class="meta">
+        By {post.data.author} · <time
+          datetime={post.data.publishedDate.toISOString()}
+        >
+          {
+            post.data.publishedDate.toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+              timeZone: "UTC",
+            })
+          }
+        </time>
+      </p>
+    </header>
+    <figure class="article-hero">
+      <img
+        src={withBase(post.data.heroImage)}
+        alt={post.data.heroAlt}
+        width="1500"
+        height="1126"
+      />
+    </figure>
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>

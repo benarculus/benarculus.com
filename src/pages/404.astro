@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../lib/site";
+---
+
+<BaseLayout title="Page not found — Ben Arculus" pathname="/404">
+  <section class="not-found">
+    <p class="eyebrow">404</p>
+    <h1>This page wandered off.</h1>
+    <p class="lede">The idea may have moved, but the notes are still here.</p>
+    <p><a class="button" href={withBase("/blog/")}>Browse the notes</a></p>
+  </section>
+</BaseLayout>

@@ -1,0 +1,42 @@
+---
+import type { PostEntry } from "../lib/site";
+import { postPath, withBase } from "../lib/site";
+
+interface Props {
+  post: PostEntry;
+  headingLevel?: "h2" | "h3";
+  featured?: boolean;
+}
+
+const { post, headingLevel = "h2", featured = false } = Astro.props;
+const Heading = headingLevel;
+---
+
+<article class="post-card">
+  <img
+    src={withBase(post.data.heroImage)}
+    alt={post.data.heroAlt}
+    width="1500"
+    height="1126"
+  />
+  <div class="post-card-copy">
+    <p class="eyebrow">{featured ? "Featured essay" : "Essay"}</p>
+    <Heading>
+      <a href={withBase(postPath(post))}>{post.data.title}</a>
+    </Heading>
+    <p>{post.data.description}</p>
+    <p class="meta">
+      <time datetime={post.data.publishedDate.toISOString()}>
+        {
+          post.data.publishedDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "UTC",
+          })
+        }
+      </time>
+      · {post.data.author}
+    </p>
+  </div>
+</article>

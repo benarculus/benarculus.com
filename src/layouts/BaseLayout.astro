@@ -1,0 +1,75 @@
+---
+import "../styles/global.css";
+import { absoluteUrl, SITE, withBase } from "../lib/site";
+
+interface Props {
+  title?: string;
+  description?: string;
+  pathname?: string;
+  socialImage?: string;
+  type?: "website" | "article";
+}
+
+const {
+  title = SITE.title,
+  description = SITE.description,
+  pathname = Astro.url.pathname,
+  socialImage = "/images/writing-practice-social.png",
+  type = "website",
+} = Astro.props;
+const canonical = absoluteUrl(pathname);
+const socialImageUrl = absoluteUrl(socialImage);
+const current =
+  pathname === "/" ? "home" : pathname.startsWith("/blog") ? "blog" : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      href={withBase("/rss.xml")}
+    />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={socialImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageUrl} />
+    <title>{title}</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href={withBase("/")}>Ben Arculus</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a
+          href={withBase("/")}
+          aria-current={current === "home" ? "page" : undefined}>Home</a
+        >
+        <a
+          href={withBase("/blog/")}
+          aria-current={current === "blog" ? "page" : undefined}>Notes</a
+        >
+      </nav>
+    </header>
+    <main id="main-content">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>
+        © {new Date().getFullYear()} Benjamin Arculus. Built with care and plain Markdown.
+      </p>
+    </footer>
+  </body>
+</html>

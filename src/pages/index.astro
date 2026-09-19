@@ -1,0 +1,43 @@
+---
+import { getCollection } from "astro:content";
+import PostCard from "../components/PostCard.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getPublishedPosts, withBase } from "../lib/site";
+
+const posts = getPublishedPosts(await getCollection("posts"));
+const featured = posts[0];
+---
+
+<BaseLayout pathname="/">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">
+        Technical leadership · cybersecurity · AI · entrepreneurship
+      </p>
+      <h1>Notes from <em>building, leading, and learning.</em></h1>
+      <p class="lede">
+        Personal notes on technical leadership, cybersecurity, AI, and the work
+        of building startups—shared from experience, curiosity, and lessons
+        still in progress.
+      </p>
+      <a class="button" href={withBase("/blog/")}>Read the notes</a>
+    </div>
+  </section>
+  {
+    featured && (
+      <section class="section" aria-labelledby="latest-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Latest note</p>
+            <h2 id="latest-heading">Ideas worth taking into the work.</h2>
+          </div>
+          <p>
+            Practical notes for people building teams, strengthening security,
+            and turning early ideas into useful work.
+          </p>
+        </div>
+        <PostCard post={featured} headingLevel="h3" featured />
+      </section>
+    )
+  }
+</BaseLayout>

@@ -1,0 +1,26 @@
+---
+import { getCollection } from "astro:content";
+import PostCard from "../../components/PostCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getPublishedPosts } from "../../lib/site";
+
+const posts = getPublishedPosts(await getCollection("posts"));
+---
+
+<BaseLayout
+  title="Notes — Ben Arculus"
+  description="Personal notes on technical leadership, cybersecurity, AI, and building startups."
+  pathname="/blog/"
+>
+  <header class="page-intro">
+    <p class="eyebrow">The notes</p>
+    <h1>Notes from the work.</h1>
+    <p class="lede">
+      Personal notes on technical leadership, cybersecurity, AI, and the work of
+      building startups.
+    </p>
+  </header>
+  <section class="section" aria-label="Published essays">
+    {posts.map((post) => <PostCard post={post} headingLevel="h2" />)}
+  </section>
+</BaseLayout>

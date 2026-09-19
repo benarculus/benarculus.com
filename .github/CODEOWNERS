@@ -1,0 +1,6 @@
+/.github/workflows/ @benarculus
+/.github/dependabot.yml @benarculus
+/package.json @benarculus
+/package-lock.json @benarculus
+/astro.config.mjs @benarculus
+/src/content.config.ts @benarculus

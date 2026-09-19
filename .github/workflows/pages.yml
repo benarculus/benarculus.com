@@ -1,0 +1,79 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      site_mode:
+        description: Pages artifact mode to publish
+        type: choice
+        default: preview
+        options:
+          - preview
+          - production
+
+env:
+  SITE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.site_mode || 'preview' }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-pages:
+    name: Build Pages artifact
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      # actions/setup-node v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.8.0
+          cache: npm
+      # actions/configure-pages v5.0.0
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npm run validate
+      - name: Build selected Pages artifact
+        run: |
+          if [ "$SITE_MODE" = "production" ]; then
+            npm run build
+            npm run test:generated
+          else
+            npm run build:preview
+            npm run test:generated:preview
+          fi
+      - name: Reject hidden files in the artifact
+        run: |
+          if find dist -type f \( -name '.*' -o -path '*/.*/*' \) -print -quit | grep -q .; then
+            echo "Hidden files must not be published."
+            exit 1
+          fi
+      # actions/upload-pages-artifact v3.0.1
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: dist
+          retention-days: 1
+
+  deploy-pages:
+    name: Deploy Pages
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      # actions/deploy-pages v4.0.5
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

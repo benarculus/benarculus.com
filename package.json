@@ -1,0 +1,44 @@
+{
+  "name": "benarculus-com",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "check": "astro check && npm run format:check",
+    "test": "vitest run --coverage",
+    "test:unit": "vitest run --coverage",
+    "test:browser": "playwright test",
+    "test:generated": "node scripts/assert-generated.mjs production",
+    "test:generated:preview": "node scripts/assert-generated.mjs preview",
+    "test:lighthouse": "node scripts/lighthouse.mjs",
+    "build": "astro build",
+    "build:preview": "SITE_MODE=preview astro build",
+    "preview": "astro preview",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "npm run check && npm run test:unit && npm run build && npm run test:generated && npm run test:browser"
+  },
+  "dependencies": {
+    "@astrojs/rss": "4.0.19",
+    "astro": "7.2.10",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@astrojs/markdown-remark": "7.3.0",
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.62.0",
+    "@types/node": "24.3.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "lighthouse": "13.4.1",
+    "playwright-core": "1.62.0",
+    "prettier": "3.8.1",
+    "prettier-plugin-astro": "0.14.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1126" role="img" aria-labelledby="title description">
+  <title id="title">A pen resting on an open notebook</title>
+  <desc id="description">
+    An abstract fountain pen rests with its nib on a ruled page of a warm paper notebook.
+  </desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaf1"/>
+      <stop offset="1" stop-color="#efe1ca"/>
+    </linearGradient>
+    <linearGradient id="penBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#497863"/>
+      <stop offset=".55" stop-color="#315846"/>
+      <stop offset="1" stop-color="#203e33"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="26" stdDeviation="32" flood-color="#4b3424" flood-opacity=".16"/>
+    </filter>
+    <filter id="penShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="12" dy="20" stdDeviation="18" flood-color="#29231f" flood-opacity=".2"/>
+    </filter>
+  </defs>
+
+  <rect width="1500" height="1126" fill="url(#background)"/>
+  <circle cx="160" cy="160" r="230" fill="#d49c68" opacity=".15"/>
+  <circle cx="1360" cy="1000" r="330" fill="#3f6b57" opacity=".11"/>
+
+  <g filter="url(#shadow)">
+    <path d="M245 257c187-42 356-11 505 91v596c-149-102-318-133-505-91z" fill="#fffdf8"/>
+    <path d="M1255 257c-187-42-356-11-505 91v596c149-102 318-133 505-91z" fill="#fffdf8"/>
+    <path d="M245 257c187-42 356-11 505 91 149-102 318-133 505-91" fill="none" stroke="#29231f" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M245 257v596c187-42 356-11 505 91 149-102 318-133 505-91V257" fill="none" stroke="#29231f" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M750 348v596" stroke="#d8c9b2" stroke-width="9"/>
+  </g>
+
+  <g fill="none" stroke="#ded2c0" stroke-linecap="round" stroke-width="12">
+    <path d="M335 438h305"/>
+    <path d="M335 522h265"/>
+    <path d="M335 606h290"/>
+    <path d="M335 690h235"/>
+    <path d="M1165 438H860"/>
+    <path d="M1165 522H900"/>
+    <path d="M1165 606H875"/>
+    <path d="M1165 690H930"/>
+  </g>
+
+  <g transform="translate(500 690) rotate(-38)" filter="url(#penShadow)">
+    <rect x="95" y="-37" width="560" height="74" rx="37" fill="url(#penBody)" stroke="#203e33" stroke-width="10"/>
+    <path d="M140 -37h330" stroke="#7fa28f" stroke-width="13" stroke-linecap="round" opacity=".7"/>
+    <path d="M655 -37h55c33 0 50 17 50 37s-17 37-50 37h-55z" fill="url(#penBody)" stroke="#29231f" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M672 -37v74" stroke="#c7a267" stroke-width="9"/>
+    <path d="M0 0l35-22c34-5 60 3 60 22s-26 27-60 22z" fill="url(#penBody)" stroke="#29231f" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M8 0h72" stroke="#29231f" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="55" cy="0" r="5" fill="#fffaf1"/>
+  </g>
+
+  <g fill="#284b3e">
+    <circle cx="277" cy="925" r="12"/>
+    <circle cx="1220" cy="180" r="14"/>
+    <circle cx="1320" cy="250" r="8"/>
+  </g>
+</svg>
