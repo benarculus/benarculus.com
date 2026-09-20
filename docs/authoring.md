@@ -66,13 +66,16 @@ approved.
 
 ## Hosting and recovery
 
-GitHub Pages deployment is produced only from trusted `main` history. The temporary project-site
-preview uses `https://benarculus.github.io/benarculus.com/`; the production site uses
-`https://benarculus.com/` after controlled DNS cutover.
+GitHub Pages deployment is produced only from trusted `main` history. The project-site preview
+remains available at `https://benarculus.github.io/benarculus.com/` for manual verification; the
+production site is `https://benarculus.com/`, active since the apex DNS cutover, with GitHub
+Pages HTTPS enforcement enabled.
 
-Before changing DNS, keep an external record of the existing DNS values and retain Squarespace.
-Rollback means restoring those recorded DNS values while the prior service remains active. Never
-store private Squarespace exports or analytics data in this public repository.
+If a future DNS or hosting change is needed, keep an external record of the DNS values in effect
+beforehand. Rollback means restoring the previously recorded DNS values while confirming the
+intended prior host still serves the domain. Never store private Squarespace exports or analytics
+data in this public repository.
 
-Use [`docs/migration-inventory.md`](migration-inventory.md) for the private owner-side export,
-content, media, search, DNS, and rollback checklist.
+Use [`docs/migration-inventory.md`](migration-inventory.md) as the historical record of the
+private owner-side export, content, media, search, DNS, and rollback checklist used for the
+original cutover.
