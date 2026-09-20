@@ -26,7 +26,10 @@ npm run validate
 
 ## Publishing model
 
-Preview builds target `https://benarculus.github.io/benarculus.com/`. Production builds target `https://benarculus.com/` after the GitHub Pages custom domain and DNS are activated.
+Preview builds target `https://benarculus.github.io/benarculus.com/` and are produced by manually
+dispatching the Pages workflow in preview mode. Production builds target `https://benarculus.com/`
+and are produced automatically on every push to `main`; GitHub Pages serves this apex domain with
+HTTPS enforced.
 
 Only publication-ready material belongs in this public repository. Keep private drafts, credentials, analytics exports, private media, and sensitive metadata outside Git history.
 
