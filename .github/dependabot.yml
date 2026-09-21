@@ -19,6 +19,12 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # typescript 7.x breaks CI: @astrojs/check@0.9.10 (latest) only supports
+      # typescript ^5.0.0 || ^6.0.0, so `npm ci` fails on peer-dependency
+      # resolution. Remove once @astrojs/check adds TS 7 support.
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
 
   - package-ecosystem: github-actions
     directory: /
