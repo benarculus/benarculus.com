@@ -37,7 +37,7 @@ jobs:
       - run: npm run validate
       - name: Build selected Pages artifact
         run: |
-          site_mode="${{ github.event_name == 'workflow_dispatch' && inputs.site_mode || 'preview' }}"
+          site_mode="${{ github.event_name == 'workflow_dispatch' && inputs.site_mode || 'production' }}"
           if [ "$site_mode" = "production" ]; then
             npm run build
             npm run test:generated
