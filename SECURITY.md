@@ -36,11 +36,11 @@ named `github-token` secret input only (never `secrets: inherit`).
 - **Evidence location**: the reusable workflow's redacted GitHub Step Summary on the
   `malware-advisory-check` job run records the outcome, match count, and coverage-gap count for
   each pull request; the run itself is the durable evidence of what was evaluated.
-- **Rollback**: this repository has no branch protection ruleset requiring the
-  `malware-advisory-check` context. If the check must be disabled in an emergency, the ruleset-first
-  action is to confirm no required ruleset references it (or remove that requirement first) before
-  removing or disabling `.github/workflows/malware-advisory-check.yml`, so a required-but-missing
-  check never blocks merges.
+- **Rollback**: active ruleset `23698819` requires the exact status-check context
+  `Malware advisory check / check`. If the check must be disabled in an emergency, follow the
+  ruleset-first order: remove or update that requirement in the ruleset before removing or
+  disabling `.github/workflows/malware-advisory-check.yml`, so a required-but-missing check does
+  not block merges.
 - **Pin updates**: update the `@<commit-sha>` pin only to another reviewed, released commit SHA
   in `benarculus/malware-advisory-check`. Never point the caller at a branch, floating tag, or
   unreleased commit.
