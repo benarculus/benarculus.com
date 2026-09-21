@@ -34,6 +34,7 @@ assert.match(article, /"@type":"BlogPosting"/);
 assert.match(article, new RegExp(`"mainEntityOfPage":"${articleUrl}"`));
 assert.match(index, new RegExp(`href="${base}/blog/"`));
 assert.match(index, new RegExp(`src="${base}/images/writing-practice.svg"`));
+assert.match(rss, new RegExp(`<link>${origin}${base}/</link>`));
 assert.match(
   rss,
   new RegExp(`<link>${origin}${base}/blog/${articleSlug}/</link>`),
