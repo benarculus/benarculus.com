@@ -11,6 +11,8 @@
     "check": "astro check && npm run format:check",
     "test": "vitest run --coverage",
     "test:unit": "vitest run --coverage",
+    "test:serial": "node --test tests/serial/*.test.mjs && python3 -B -m unittest discover -s tests/serial -p 'test_*.py'",
+    "dependabot:serial": "node scripts/dependabot-serial.mjs",
     "test:browser": "playwright test",
     "test:generated": "node scripts/assert-generated.mjs production",
     "test:generated:preview": "node scripts/assert-generated.mjs preview",
@@ -20,7 +22,7 @@
     "preview": "astro preview",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "npm run check && npm run test:unit && npm run build && npm run test:generated && npm run test:browser"
+    "validate": "npm run check && npm run test:unit && npm run test:serial && npm run build && npm run test:generated && npm run test:browser"
   },
   "dependencies": {
     "@astrojs/rss": "4.0.19",

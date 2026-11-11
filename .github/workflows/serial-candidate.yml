@@ -1,0 +1,100 @@
+name: Serial cumulative candidate
+run-name: ${{ inputs.nonce }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Immutable current main SHA
+        type: string
+        required: true
+      head:
+        description: Approved immutable Dependabot head SHA
+        type: string
+        required: true
+      pr:
+        description: Dependabot PR number
+        type: string
+        required: true
+      nonce:
+        description: Unique controller correlation ID
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  identity:
+    name: Verify immutable merge parents
+    runs-on: ubuntu-24.04
+    outputs:
+      merge: ${{ steps.identity.outputs.merge }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.8.0
+      - id: identity
+        env:
+          BASE: ${{ inputs.base }}
+          HEAD: ${{ inputs.head }}
+          PR: ${{ inputs.pr }}
+        run: node scripts/validate-candidate.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: candidate-identity
+          path: candidate.json
+          if-no-files-found: error
+          retention-days: 30
+
+  malware:
+    needs: identity
+    permissions:
+      contents: read
+    uses: benarculus/malware-advisory-check/.github/workflows/reusable-malware-advisory-check.yml@733acbdf20304f70ac0c9a763921cac4c23882ef
+    with:
+      base-ref: ${{ inputs.base }}
+      head-ref: ${{ inputs.head }}
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  candidate:
+    name: Validate cumulative candidate
+    needs: identity
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.identity.outputs.merge }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.8.0
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npm run validate
+      - run: npm run build:preview && npm run test:generated:preview
+
+  result:
+    name: Require every candidate gate
+    needs: [identity, malware, candidate]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          IDENTITY: ${{ needs.identity.result }}
+          MALWARE: ${{ needs.malware.result }}
+          CANDIDATE: ${{ needs.candidate.result }}
+          MALWARE_EXIT: ${{ needs.malware.outputs.exit-code }}
+          MALWARE_MATCHES: ${{ needs.malware.outputs.match-count }}
+          MALWARE_GAPS: ${{ needs.malware.outputs.coverage-gap-count }}
+        run: |
+          test "$IDENTITY" = success
+          test "$MALWARE" = success
+          test "$CANDIDATE" = success
+          test "$MALWARE_EXIT" = 0
+          test "$MALWARE_MATCHES" = 0
+          test "$MALWARE_GAPS" = 0
