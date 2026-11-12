@@ -4,6 +4,150 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
+import { validatePackageUpdate } from "../../scripts/validate-package-update.mjs";
+
+const trustedManifest = {
+  name: "fixture",
+  private: true,
+  type: "module",
+  engines: { node: ">=24" },
+  scripts: {
+    validate: "node trusted-validation.mjs",
+    "build:preview": "node trusted-build.mjs",
+    "test:generated:preview": "node trusted-assertions.mjs",
+    preinstall: "node trusted-install.mjs",
+  },
+  dependencies: { astro: "7.3.1" },
+  devDependencies: { "@playwright/test": "1.63.0" },
+};
+const manifestText = (value) => JSON.stringify(value);
+
+test("direct production/dev version updates and lock-only updates remain valid", () => {
+  const updated = structuredClone(trustedManifest);
+  updated.dependencies.astro = "7.3.2";
+  updated.devDependencies["@playwright/test"] = "1.64.0";
+  validatePackageUpdate(manifestText(trustedManifest), manifestText(updated));
+  validatePackageUpdate(
+    manifestText(trustedManifest),
+    manifestText(trustedManifest),
+  );
+});
+
+const invalidManifestChanges = {
+  "successful no-op validation": (m) => {
+    m.scripts.validate = "true";
+  },
+  "successful no-op preview build": (m) => {
+    m.scripts["build:preview"] = "true";
+  },
+  "successful no-op preview assertions": (m) => {
+    m.scripts["test:generated:preview"] = "true";
+  },
+  "lifecycle addition": (m) => {
+    m.scripts.postinstall = "node unexpected.mjs";
+  },
+  "lifecycle removal": (m) => {
+    delete m.scripts.preinstall;
+  },
+  "scripts removal": (m) => {
+    delete m.scripts;
+  },
+  "engine changes": (m) => {
+    m.engines.node = ">=1";
+  },
+  "package manager": (m) => {
+    m.packageManager = "npm@1.0.0";
+  },
+  "module type": (m) => {
+    m.type = "commonjs";
+  },
+  metadata: (m) => {
+    m.name = "different";
+  },
+  "tool config": (m) => {
+    m.config = { executable: "unexpected" };
+  },
+  overrides: (m) => {
+    m.overrides = { astro: "0.0.1" };
+  },
+  workspaces: (m) => {
+    m.workspaces = ["other"];
+  },
+  "optional section": (m) => {
+    m.optionalDependencies = { unexpected: "1.0.0" };
+  },
+  "peer section": (m) => {
+    m.peerDependencies = { unexpected: "1.0.0" };
+  },
+  "dependency section removal": (m) => {
+    delete m.dependencies;
+  },
+  "dependency array": (m) => {
+    m.dependencies = [];
+  },
+  "dependency null": (m) => {
+    m.dependencies = null;
+  },
+  "dependency scalar": (m) => {
+    m.dependencies = "unexpected";
+  },
+  "dependency object version": (m) => {
+    m.dependencies.astro = { version: "7.3.2" };
+  },
+  "dependency null version": (m) => {
+    m.dependencies.astro = null;
+  },
+  "dependency name addition": (m) => {
+    m.dependencies.unexpected = "1.0.0";
+  },
+  "dependency name removal": (m) => {
+    delete m.dependencies.astro;
+  },
+  "dependency section move": (m) => {
+    m.devDependencies.astro = m.dependencies.astro;
+    delete m.dependencies.astro;
+  },
+  "local dependency": (m) => {
+    m.dependencies.astro = "file:../unexpected";
+  },
+  "git dependency": (m) => {
+    m.dependencies.astro = "git+https://example.invalid/repo";
+  },
+  "npm alias": (m) => {
+    m.dependencies.astro = "npm:unexpected@1.0.0";
+  },
+};
+for (const [label, mutate] of Object.entries(invalidManifestChanges)) {
+  test(`manifest preflight rejects ${label}`, () => {
+    const updated = structuredClone(trustedManifest);
+    mutate(updated);
+    assert.throws(() =>
+      validatePackageUpdate(
+        manifestText(trustedManifest),
+        manifestText(updated),
+      ),
+    );
+  });
+}
+test("ambiguous JSON, escaped duplicate keys and invalid root shapes fail closed", () => {
+  for (const text of [
+    "null",
+    "[]",
+    '"string"',
+    "1",
+    "{",
+    '{"scripts":{},"scripts":{}}',
+    '{"scripts":{"validate":"true","\\u0076alidate":"false"}}',
+    '{"dependencies":{"astro":"7.3.1","astro":"7.3.2"}}',
+  ]) {
+    assert.throws(() =>
+      validatePackageUpdate(manifestText(trustedManifest), text),
+    );
+    assert.throws(() =>
+      validatePackageUpdate(text, manifestText(trustedManifest)),
+    );
+  }
+});
 
 test("digest/verifier helpers can be imported from an inline preparation command", () => {
   const result = spawnSync(
@@ -50,11 +194,12 @@ test("trusted candidate script validates immutable B/H and restricted diff befor
         .join(""),
     );
   }
-  const baseTree = tree({ "package.json": "{}\n" });
+  const baseText = manifestText(trustedManifest);
+  const baseTree = tree({ "package.json": baseText });
   const base = git(["commit-tree", baseTree, "-m", "base"]);
   const head = git([
     "commit-tree",
-    tree({ "package.json": "{}\n", "package-lock.json": "{}\n" }),
+    tree({ "package.json": baseText, "package-lock.json": "{}\n" }),
     "-p",
     base,
     "-m",
@@ -107,6 +252,46 @@ test("trusted candidate script validates immutable B/H and restricted diff befor
     { GITHUB_REPOSITORY: "foreign/repo" },
   ])
     assert.notEqual(run(patch).status, 0);
+  function candidateManifest(text) {
+    const candidateHead = git([
+      "commit-tree",
+      tree({ "package.json": text, "package-lock.json": "{}\n" }),
+      "-p",
+      base,
+      "-m",
+      "update",
+    ]);
+    const synthetic = git([
+      "commit-tree",
+      git(["rev-parse", `${candidateHead}^{tree}`]),
+      "-p",
+      base,
+      "-p",
+      candidateHead,
+      "-m",
+      "synthetic",
+    ]);
+    git(["update-ref", "refs/pull/22/merge", synthetic]);
+    return run({ HEAD: candidateHead });
+  }
+  const versionUpdate = structuredClone(trustedManifest);
+  versionUpdate.dependencies.astro = "7.3.2";
+  assert.equal(candidateManifest(manifestText(versionUpdate)).status, 0);
+  for (const [label, mutate] of Object.entries(invalidManifestChanges)) {
+    const updated = structuredClone(trustedManifest);
+    mutate(updated);
+    assert.notEqual(candidateManifest(manifestText(updated)).status, 0, label);
+  }
+  assert.notEqual(
+    candidateManifest(
+      baseText.replace(
+        '"astro":"7.3.1"',
+        '"astro":"7.3.1","\\u0061stro":"7.3.2"',
+      ),
+    ).status,
+    0,
+  );
+  git(["update-ref", "refs/pull/22/merge", merge]);
   git(["update-ref", "refs/heads/main", head]);
   assert.match(run().stderr, /Main changed/);
   git(["update-ref", "refs/heads/main", base]);

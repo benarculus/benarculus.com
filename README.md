@@ -90,6 +90,17 @@ production/preview build, pinned malware check), then dispatches cumulative vali
 of immutable B/H. A trusted job verifies the synthetic merge's exact two parents and
 limits changes to `package.json`/`package-lock.json` **before** candidate code runs on
 another runner with only read permissions and no persisted checkout credentials.
+The shared manifest preflight also compares parsed immutable base/candidate
+`package.json` documents, rejecting duplicate JSON keys and invalid shapes. Only
+version strings for existing names in existing `dependencies`/`devDependencies`
+sections may change, and changed values must be exact registry versions. Scripts
+(including lifecycle hooks), engines, module type, package manager, metadata and
+all other configuration must remain identical. Adding/removing dependency names
+or sections requires separate manual review. Thus candidate `npm ci` and validation
+commands retain the trusted base's entrypoints; dependency installation itself can
+still execute dependency-provided code on the isolated read-only candidate runner.
+Controller preflight uses this same validator; the trusted identity job repeats it
+against the verified synthetic merge before any candidate installation or execution.
 The malware job uses the unchanged approved reusable SHA with explicit B/H; skipped,
 cancelled, missing, stale, duplicate, or unsuccessful jobs stop progression.
 The approved malware caller workflow is unchanged.

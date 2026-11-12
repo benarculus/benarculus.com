@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
+import { validatePackageUpdate } from "./validate-package-update.mjs";
 
 const { BASE, HEAD, PR, GITHUB_REPOSITORY, GITHUB_OUTPUT, GITHUB_SHA } =
   process.env;
@@ -36,6 +37,10 @@ requireValue(
   files.length > 0 &&
     files.every((path) => ["package.json", "package-lock.json"].includes(path)),
   "Candidate changes trusted code/workflows; manual review required",
+);
+validatePackageUpdate(
+  git("show", `${BASE}:package.json`),
+  git("show", `${merge}:package.json`),
 );
 writeFileSync(
   "candidate.json",

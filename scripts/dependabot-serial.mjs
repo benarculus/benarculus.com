@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { homedir } from "node:os";
 import { sha256 } from "./write-deployment-manifest.mjs";
+import { validatePackageUpdate } from "./validate-package-update.mjs";
 
 const SHA = /^[a-f0-9]{40}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -632,6 +633,15 @@ export function githubIO(approval, directory, baseline, save) {
           ),
         "Only dependency manifests may change in a serial candidate",
       );
+      const manifest = (sha) => {
+        const file = api(`${repo}/contents/package.json?ref=${sha}`);
+        insist(
+          file.type === "file" && file.encoding === "base64",
+          "Package manifest must be a regular file",
+        );
+        return Buffer.from(file.content, "base64").toString("utf8");
+      };
+      validatePackageUpdate(manifest(base), manifest(item.head));
       const nonce = `serial-${randomUUID()}`;
       const workflow = workflows().find(
         (w) => w.path === ".github/workflows/serial-candidate.yml",
