@@ -11,8 +11,18 @@ import time
 import zlib
 from pathlib import Path
 from html.parser import HTMLParser
+import re
 
 sys.dont_write_bytecode = True
+ROUTES = {
+    "home": "/", "notes": "/blog/",
+    "article": "/blog/generate-clarity-by-establishing-a-writing-practice/",
+    "not-found": "/production-baseline-missing-page/",
+}
+DEVICES = ("desktop", "mobile")
+MODES = ("viewport", "full")
+SCREENSHOTS = {f"{device}-{route}-{mode}.png"
+               for device in DEVICES for route in ROUTES for mode in MODES}
 
 
 class ScriptInventory(HTMLParser):
@@ -39,6 +49,40 @@ class ScriptInventory(HTMLParser):
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
+
+def safe_name(path):
+    require(isinstance(path, str) and path.startswith("/"), "Invalid screenshot path")
+    parts = path.split("/")[1:]
+    require(all(re.fullmatch(r"[A-Za-z0-9._-]+", part) and part not in (".", "..")
+                for part in parts), "Unsafe screenshot path")
+    return parts[-1]
+
+
+def validate_baseline_contract(summary, observations):
+    entries = summary.get("screenshot_manifest")
+    require(isinstance(entries, list) and len(entries) == 16, "Baseline must declare exactly 16 screenshots")
+    names = [safe_name(entry["path"]) for entry in entries]
+    require(len(set(names)) == 16 and set(names) == SCREENSHOTS, "Unexpected or duplicate baseline screenshots")
+    require(all(re.fullmatch(r"[a-f0-9]{64}", entry.get("sha256", "")) for entry in entries),
+            "Invalid screenshot hash")
+    pages = observations.get("pages")
+    require(isinstance(pages, list) and len(pages) == 8, "Baseline must declare eight page captures")
+    seen = set()
+    for page in pages:
+        device, route = page.get("device"), page.get("route_name")
+        require(device in DEVICES and route in ROUTES, "Unexpected baseline route/device")
+        key = f"{device}-{route}"
+        require(key not in seen, "Duplicate baseline route/device")
+        seen.add(key)
+        require(page.get("url") == f"https://benarculus.com{ROUTES[route]}", "Wrong baseline route URL")
+        captures = page.get("screenshots")
+        require(isinstance(captures, list) and len(captures) == 2, "Missing baseline captures")
+        require({safe_name(path) for path in captures} == {f"{key}-{mode}.png" for mode in MODES},
+                "Wrong baseline page screenshots")
+
+def validate_output_screenshots(output):
+    require({path.name for path in output.glob("*.png")} == SCREENSHOTS,
+            "Capture output has missing or unexpected screenshots")
 
 
 def png_pixels(path):
@@ -178,10 +222,15 @@ def main(baseline, output):
     summary = json.loads((baseline / "summary.json").read_text())
     require(platform.platform() == summary["os"], "Exact approved OS/fonts host required")
     before = json.loads((baseline / "observations.json").read_text())
+    validate_baseline_contract(summary, before)
+    for image in summary["screenshot_manifest"]:
+        require(hashlib.sha256((baseline / safe_name(image["path"])).read_bytes()).hexdigest() == image["sha256"],
+                "Altered baseline image")
     spec = importlib.util.spec_from_file_location("approved_capture", baseline / "capture.py")
     capture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(capture)
     require(capture.BASE == "https://benarculus.com", "Unexpected capture origin")
+    require(capture.ROUTES == ROUTES, "Unexpected capture routes")
     capture.ROOT = output
     original_call = capture.CDP.call
     trace = (output / "cdp-trace.jsonl").open("w")
@@ -216,6 +265,8 @@ def main(baseline, output):
         signal.alarm(0)
         trace.close()
     after = json.loads((output / "observations.json").read_text())
+    validate_baseline_contract(summary, after)
+    validate_output_screenshots(output)
     differences = {}
     for image in summary["screenshot_manifest"]:
         name = Path(image["path"]).name

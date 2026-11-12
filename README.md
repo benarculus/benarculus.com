@@ -97,8 +97,19 @@ sections may change, and changed values must be exact registry versions. Scripts
 (including lifecycle hooks), engines, module type, package manager, metadata and
 all other configuration must remain identical. Adding/removing dependency names
 or sections requires separate manual review. Thus candidate `npm ci` and validation
-commands retain the trusted base's entrypoints; dependency installation itself can
-still execute dependency-provided code on the isolated read-only candidate runner.
+commands retain the trusted base's entrypoints. Candidate install and validation run
+in a disposable Docker container, with no runner filesystem mounts, Actions command
+files, tokens, or host cache. The Ubuntu browser image is pinned by digest and Node
+24.8.0 by SHA-256. `npm ci --ignore-scripts` builds the image without lifecycle hooks;
+`npm rebuild --foreground-scripts` then exercises install hooks as an unprivileged user
+with the container root, source, dependencies and tooling read-only. Hook failures or
+hooks requiring writes outside explicitly temporary build/browser directories stop the
+gate. npm user/global configuration and shell startup are pinned away from writable
+home files, and npm's script shell is fixed to `/bin/bash`. Isolated output is not
+forwarded as Actions workflow commands. Browser binaries
+and build outputs are temporary; the container and image are discarded after the job.
+Dependencies still execute code inside the container and the gate cannot prove that
+malicious dependencies honestly implement tests or browser tooling.
 Controller preflight uses this same validator; the trusted identity job repeats it
 against the verified synthetic merge before any candidate installation or execution.
 The malware job uses the unchanged approved reusable SHA with explicit B/H; skipped,

@@ -70,13 +70,11 @@ jobs:
         with:
           ref: ${{ needs.identity.outputs.merge }}
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.8.0
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npm run validate
-      - run: npm run build:preview && npm run test:generated:preview
+          fetch-depth: 1
+      - name: Validate in a disposable isolated container
+        env:
+          CANDIDATE_MERGE: ${{ needs.identity.outputs.merge }}
+        run: bash scripts/run-candidate-container.sh "$CANDIDATE_MERGE"
 
   result:
     name: Require every candidate gate

@@ -13,6 +13,7 @@ import { pathToFileURL } from "node:url";
 import { homedir } from "node:os";
 import { sha256 } from "./write-deployment-manifest.mjs";
 import { validatePackageUpdate } from "./validate-package-update.mjs";
+import { validateBaselineContract } from "./baseline-contract.mjs";
 
 const SHA = /^[a-f0-9]{40}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -106,11 +107,15 @@ export async function baselineDigest(directory) {
   const summary = JSON.parse(
     await readFile(join(directory, "summary.json"), "utf8"),
   );
+  const observations = JSON.parse(
+    await readFile(join(directory, "observations.json"), "utf8"),
+  );
+  const screenshots = validateBaselineContract(summary, observations);
   const names = [
     "capture.py",
     "observations.json",
     "summary.json",
-    ...summary.screenshot_manifest.map((image) => image.path.split("/").at(-1)),
+    ...screenshots.map((image) => image.path.split("/").at(-1)),
   ].sort();
   insist(new Set(names).size === names.length, "Duplicate baseline files");
   const hash = createHash("sha256");

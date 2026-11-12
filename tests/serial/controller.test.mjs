@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { screenshotNames } from "../../scripts/baseline-contract.mjs";
 import {
   serial,
   digest,
@@ -325,27 +326,90 @@ test("external deployment/push after first verification prevents second merge", 
   assert(!f.events.includes("merge-21"));
 });
 
-test("baseline alteration stops before any merge", async (t) => {
-  const f = await fixture(t);
-  const baseline = join(f.directory, "baseline");
+async function baselineFixture(directory) {
+  const baseline = join(directory, "baseline");
   await mkdir(baseline);
+  const routes = {
+    home: "/",
+    notes: "/blog/",
+    article: "/blog/generate-clarity-by-establishing-a-writing-practice/",
+    "not-found": "/production-baseline-missing-page/",
+  };
+  const entries = [];
+  for (const name of screenshotNames) {
+    await writeFile(join(baseline, name), "original");
+    entries.push({ path: `/original/${name}`, sha256: sha256("original") });
+  }
+  const pages = ["desktop", "mobile"].flatMap((device) =>
+    Object.entries(routes).map(([route_name, path]) => ({
+      device,
+      route_name,
+      url: `https://benarculus.com${path}`,
+      screenshots: ["viewport", "full"].map(
+        (mode) => `/original/${device}-${route_name}-${mode}.png`,
+      ),
+    })),
+  );
   await writeFile(join(baseline, "capture.py"), "approved capture");
-  await writeFile(join(baseline, "observations.json"), "{}");
-  await writeFile(join(baseline, "home.png"), "original");
+  await writeFile(
+    join(baseline, "observations.json"),
+    JSON.stringify({ pages }),
+  );
   await writeFile(
     join(baseline, "summary.json"),
-    JSON.stringify({
-      screenshot_manifest: [
-        { path: "/original/home.png", sha256: sha256("original") },
-      ],
-    }),
+    JSON.stringify({ screenshot_manifest: entries }),
   );
+  return { baseline, entries, pages };
+}
+
+test("baseline alteration stops before any merge", async (t) => {
+  const f = await fixture(t);
+  const { baseline } = await baselineFixture(f.directory);
   const approved = await baselineDigest(baseline);
-  await writeFile(join(baseline, "home.png"), "altered");
+  await writeFile(join(baseline, screenshotNames[0]), "altered");
   f.io.validateInputs = async () =>
     assert.equal(await baselineDigest(baseline), approved);
   await assert.rejects(serial(f.a, f.io, f.state), /Altered baseline/);
   assert(!f.events.includes("merge-22"));
+});
+
+test("all approved captures are required before computing baseline digest", async (t) => {
+  const f = await fixture(t);
+  const { baseline, entries, pages } = await baselineFixture(f.directory);
+  assert.match(await baselineDigest(baseline), /^[a-f0-9]{64}$/);
+  async function reject(manifest, actualPages = pages) {
+    await writeFile(
+      join(baseline, "summary.json"),
+      JSON.stringify({ screenshot_manifest: manifest }),
+    );
+    await writeFile(
+      join(baseline, "observations.json"),
+      JSON.stringify({ pages: actualPages }),
+    );
+    await assert.rejects(baselineDigest(baseline));
+  }
+  await reject([]);
+  for (let i = 0; i < entries.length; i++)
+    await reject(entries.filter((_, n) => n !== i));
+  await reject([...entries, entries[0]]);
+  await reject([...entries.slice(0, -1), entries[0]]);
+  await reject(
+    entries.map((x, i) =>
+      i ? x : { ...x, path: "/original/desktop-unexpected-full.png" },
+    ),
+  );
+  await reject(
+    entries.map((x, i) =>
+      i ? x : { ...x, path: `/original/../${screenshotNames[0]}` },
+    ),
+  );
+  await reject(entries.map((x, i) => (i ? x : { ...x, sha256: "wrong" })));
+  const wrongPage = structuredClone(pages);
+  wrongPage[0].url = "https://benarculus.com/wrong/";
+  await reject(entries, wrongPage);
+  const wrongCapture = structuredClone(pages);
+  wrongCapture[0].screenshots[0] = "/original/desktop-notes-viewport.png";
+  await reject(entries, wrongCapture);
 });
 
 function artifact() {

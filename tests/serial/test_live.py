@@ -35,6 +35,64 @@ class Pixels(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 live.png_pixels(path)
 
+class BaselineContract(unittest.TestCase):
+    def fixture(self):
+        manifest = [{"path": f"/original/{name}", "sha256": "a" * 64}
+                    for name in sorted(live.SCREENSHOTS)]
+        pages = [{"device": device, "route_name": route,
+                  "url": "https://benarculus.com" + path,
+                  "screenshots": [f"/original/{device}-{route}-{mode}.png" for mode in live.MODES]}
+                 for device in live.DEVICES for route, path in live.ROUTES.items()]
+        return {"screenshot_manifest": manifest}, {"pages": pages}
+
+    def test_exact_capture_set_required(self):
+        summary, observations = self.fixture()
+        live.validate_baseline_contract(summary, observations)
+        for i in range(16):
+            with self.subTest(omitted=i):
+                mutated = copy.deepcopy(summary)
+                del mutated["screenshot_manifest"][i]
+                with self.assertRaises(RuntimeError):
+                    live.validate_baseline_contract(mutated, observations)
+        for mutation in ["empty", "duplicate", "extra", "name", "unsafe", "hash", "route", "capture", "device"]:
+            with self.subTest(mutation=mutation):
+                s, o = copy.deepcopy(summary), copy.deepcopy(observations)
+                if mutation == "empty":
+                    s["screenshot_manifest"] = []
+                elif mutation == "duplicate":
+                    s["screenshot_manifest"][-1] = s["screenshot_manifest"][0]
+                elif mutation == "extra":
+                    s["screenshot_manifest"].append(s["screenshot_manifest"][0])
+                elif mutation == "name":
+                    s["screenshot_manifest"][0]["path"] = "/original/desktop-unexpected-full.png"
+                elif mutation == "unsafe":
+                    s["screenshot_manifest"][0]["path"] = "/original/../desktop-home-full.png"
+                elif mutation == "hash":
+                    s["screenshot_manifest"][0]["sha256"] = "invalid"
+                elif mutation == "route":
+                    o["pages"][0]["url"] = "https://benarculus.com/wrong"
+                elif mutation == "capture":
+                    o["pages"][0]["screenshots"][0] = "/original/desktop-notes-full.png"
+                elif mutation == "device":
+                    o["pages"][0]["device"] = "other"
+                with self.assertRaises(RuntimeError):
+                    live.validate_baseline_contract(s, o)
+
+    def test_exact_capture_output_is_required(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in live.SCREENSHOTS:
+                (root / name).write_bytes(b"fixture")
+            live.validate_output_screenshots(root)
+            missing = root / next(iter(live.SCREENSHOTS))
+            missing.unlink()
+            with self.assertRaises(RuntimeError):
+                live.validate_output_screenshots(root)
+            missing.write_bytes(b"fixture")
+            (root / "unexpected.png").write_bytes(b"fixture")
+            with self.assertRaises(RuntimeError):
+                live.validate_output_screenshots(root)
+
 class Observations(unittest.TestCase):
     def fixture(self):
         page = {
